@@ -9,10 +9,19 @@ body {
   color: #e0e0e0;
   font-family: system-ui, -apple-system, sans-serif;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 20px;
   min-height: 100vh;
   user-select: none;
+}
+
+.header h1 {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: 6px;
+  color: #7aa2f7;
 }
 
 .wrapper {
