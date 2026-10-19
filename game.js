@@ -14,6 +14,7 @@ const COLORS = [
   '#90caf9', // J - pale blue
   '#ffb74d', // L - orange
   '#ff5252', // Bomb - red
+  '#26c6da', // Gravity - teal
 ];
 
 // Darker variants for legibility on the light background
@@ -27,6 +28,7 @@ const COLORS_LIGHT = [
   '#1e88e5', // J
   '#fb8c00', // L
   '#d32f2f', // Bomb
+  '#00838f', // Gravity
 ];
 
 const PIECES = [
@@ -39,10 +41,14 @@ const PIECES = [
   [[6,0,0],[6,6,6],[0,0,0]],                  // J
   [[0,0,7],[7,7,7],[0,0,0]],                  // L
   [[8]],                                       // Bomb
+  [[9]],                                       // Gravity
 ];
 
 const BOMB = 8;
+const GRAVITY = 9;
+const POWERUP_ICONS = { [BOMB]: '💣', [GRAVITY]: '🧲' };
 const BOMB_CHANCE = 0.1;
+const GRAVITY_CHANCE = 0.06;
 const BOMB_POINTS = 10;
 const BOMB_RADIUS = 1; // 1 => 3x3 area
 
@@ -78,7 +84,11 @@ function createBoard() {
 }
 
 function randomPiece() {
-  const type = Math.random() < BOMB_CHANCE ? BOMB : Math.floor(Math.random() * 7) + 1;
+  const roll = Math.random();
+  let type;
+  if (roll < BOMB_CHANCE) type = BOMB;
+  else if (roll < BOMB_CHANCE + GRAVITY_CHANCE) type = GRAVITY;
+  else type = Math.floor(Math.random() * 7) + 1;
   const shape = PIECES[type].map(row => [...row]);
   return { type, shape, x: Math.floor(COLS / 2) - Math.floor(shape[0].length / 2), y: 0 };
 }
@@ -191,8 +201,23 @@ function explode(cx, cy) {
   updateHUD();
 }
 
+// Compacts every column downward so no empty cells remain under a block.
+function applyGravity() {
+  for (let c = 0; c < COLS; c++) {
+    let write = ROWS - 1;
+    for (let r = ROWS - 1; r >= 0; r--) {
+      if (board[r][c]) {
+        const v = board[r][c];
+        board[r][c] = 0;
+        board[write--][c] = v;
+      }
+    }
+  }
+}
+
 function lockPiece() {
   if (current.type === BOMB) explode(current.x, current.y);
+  else if (current.type === GRAVITY) applyGravity();
   else merge();
   clearLines();
   spawn();
@@ -231,12 +256,12 @@ function drawBlock(context, x, y, colorIndex, size, alpha) {
   // highlight
   context.fillStyle = 'rgba(255,255,255,0.12)';
   context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
-  if (colorIndex === BOMB) {
+  if (POWERUP_ICONS[colorIndex]) {
     context.font = `${Math.floor(size * 0.6)}px sans-serif`;
     context.textAlign = 'center';
     context.textBaseline = 'middle';
     context.fillStyle = '#000';
-    context.fillText('💣', x * size + size / 2, y * size + size / 2 + 1);
+    context.fillText(POWERUP_ICONS[colorIndex], x * size + size / 2, y * size + size / 2 + 1);
   }
   context.globalAlpha = 1;
 }
