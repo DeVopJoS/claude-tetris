@@ -243,3 +243,64 @@ kbd {
 #restart-btn:hover {
   background: var(--accent-hover);
 }
+
+/* ---- Pause menu ---- */
+.overlay-box button {
+  min-width: 160px;
+}
+
+#resume-btn,
+#controls-btn {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 9px 28px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 1px;
+}
+
+#resume-btn {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+#controls-btn:hover {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+#controls-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  text-align: left;
+}
+
+.level-select {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  letter-spacing: 1px;
+}
+
+.level-select select {
+  background: var(--kbd-bg);
+  border: 1px solid var(--kbd-border);
+  color: var(--text);
+  font: inherit;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.overlay:not(.pause) .pause-only,
+#controls-list.hidden {
+  display: none;
+}
