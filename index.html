@@ -7,6 +7,8 @@
   <script>
     try {
       if (localStorage.getItem('theme') === 'light') document.documentElement.dataset.theme = 'light';
+      var sk = localStorage.getItem('skin');
+      if (sk === 'neon' || sk === 'pastel' || sk === 'pixel') document.documentElement.dataset.skin = sk;
     } catch (e) {}
   </script>
   <link rel="stylesheet" href="style.css" />
@@ -14,6 +16,12 @@
 <body>
   <header class="header">
     <h1>TETRIS</h1>
+    <select id="skin-select" aria-label="Cambiar skin">
+      <option value="retro">Retro</option>
+      <option value="neon">Neon</option>
+      <option value="pastel">Pastel</option>
+      <option value="pixel">Pixel art</option>
+    </select>
     <button id="theme-toggle" type="button" aria-label="Cambiar entre modo claro y oscuro"></button>
   </header>
 
