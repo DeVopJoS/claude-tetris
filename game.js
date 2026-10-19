@@ -409,6 +409,7 @@ function init() {
 }
 
 document.addEventListener('keydown', e => {
+  if ((e.code === 'KeyP' || e.code === 'Escape') && e.repeat) return;
   if (e.code === 'KeyP') { togglePause(); return; }
   if (e.code === 'Escape') {
     if (paused && !controlsList.classList.contains('hidden')) toggleControls(false);
@@ -417,7 +418,7 @@ document.addEventListener('keydown', e => {
   }
   if (paused || gameOver) {
     // keep game keys from scrolling/activating focused controls while the menu is open
-    if (paused && e.code === 'Space' && e.target === document.body) e.preventDefault();
+    if (paused && e.code === 'Space' && e.target !== startLevelSelect) e.preventDefault();
     return;
   }
   switch (e.code) {
