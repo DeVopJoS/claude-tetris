@@ -13,6 +13,7 @@ const COLORS = [
   '#e57373', // Z - red
   '#90caf9', // J - pale blue
   '#ffb74d', // L - orange
+  '#ff5252', // Bomb - red
 ];
 
 // Darker variants for legibility on the light background
@@ -25,6 +26,7 @@ const COLORS_LIGHT = [
   '#e53935', // Z
   '#1e88e5', // J
   '#fb8c00', // L
+  '#d32f2f', // Bomb
 ];
 
 const PIECES = [
@@ -36,7 +38,17 @@ const PIECES = [
   [[5,5,0],[0,5,5],[0,0,0]],                  // Z
   [[6,0,0],[6,6,6],[0,0,0]],                  // J
   [[0,0,7],[7,7,7],[0,0,0]],                  // L
+  [[8]],                                       // Bomb
 ];
+
+const BOMB = 8;
+const BOMB_CHANCE = 0.1;
+const BOMB_POINTS = 10;
+const BOMB_RADIUS = 1; // 1 => 3x3 area
+
+const SLOW_DURATION = 10000;  // ms of game time
+const SLOW_FACTOR = 3;        // drop interval multiplier while active
+const CHARGE_PER_LINE = 25;   // % of the meter per cleared line
 
 const LINE_SCORES = [0, 100, 300, 500, 800];
 
@@ -47,6 +59,8 @@ const nextCtx = nextCanvas.getContext('2d');
 const scoreEl = document.getElementById('score');
 const linesEl = document.getElementById('lines');
 const levelEl = document.getElementById('level');
+const abilityFill = document.getElementById('ability-fill');
+const abilityStatus = document.getElementById('ability-status');
 const overlay = document.getElementById('overlay');
 const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
@@ -57,13 +71,14 @@ let theme = 'dark';
 let gridColor = '#22222e';
 
 let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
+let charge, slowRemaining;
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
 }
 
 function randomPiece() {
-  const type = Math.floor(Math.random() * 7) + 1;
+  const type = Math.random() < BOMB_CHANCE ? BOMB : Math.floor(Math.random() * 7) + 1;
   const shape = PIECES[type].map(row => [...row]);
   return { type, shape, x: Math.floor(COLS / 2) - Math.floor(shape[0].length / 2), y: 0 };
 }
@@ -124,8 +139,16 @@ function clearLines() {
     score += (LINE_SCORES[cleared] || 0) * level;
     level = Math.floor(lines / 10) + 1;
     dropInterval = Math.max(100, 1000 - (level - 1) * 90);
+    if (slowRemaining <= 0) charge = Math.min(100, charge + cleared * CHARGE_PER_LINE);
     updateHUD();
   }
+}
+
+function activateSlow() {
+  if (charge < 100 || slowRemaining > 0) return;
+  charge = 0;
+  slowRemaining = SLOW_DURATION;
+  updateHUD();
 }
 
 function ghostY() {
@@ -151,8 +174,26 @@ function softDrop() {
   }
 }
 
+function explode(cx, cy) {
+  let destroyed = 0;
+  for (let dy = -BOMB_RADIUS; dy <= BOMB_RADIUS; dy++) {
+    for (let dx = -BOMB_RADIUS; dx <= BOMB_RADIUS; dx++) {
+      const x = cx + dx;
+      const y = cy + dy;
+      if (x < 0 || x >= COLS || y < 0 || y >= ROWS) continue;
+      if (board[y][x]) {
+        board[y][x] = 0;
+        destroyed++;
+      }
+    }
+  }
+  score += destroyed * BOMB_POINTS * level;
+  updateHUD();
+}
+
 function lockPiece() {
-  merge();
+  if (current.type === BOMB) explode(current.x, current.y);
+  else merge();
   clearLines();
   spawn();
 }
@@ -170,6 +211,15 @@ function updateHUD() {
   scoreEl.textContent = score.toLocaleString();
   linesEl.textContent = lines;
   levelEl.textContent = level;
+  if (slowRemaining > 0) {
+    abilityFill.style.width = `${(slowRemaining / SLOW_DURATION) * 100}%`;
+    abilityFill.classList.add('active');
+    abilityStatus.textContent = `${Math.ceil(slowRemaining / 1000)}s`;
+  } else {
+    abilityFill.style.width = `${charge}%`;
+    abilityFill.classList.remove('active');
+    abilityStatus.textContent = charge >= 100 ? 'LISTO (S)' : `${charge}%`;
+  }
 }
 
 function drawBlock(context, x, y, colorIndex, size, alpha) {
@@ -181,6 +231,13 @@ function drawBlock(context, x, y, colorIndex, size, alpha) {
   // highlight
   context.fillStyle = 'rgba(255,255,255,0.12)';
   context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
+  if (colorIndex === BOMB) {
+    context.font = `${Math.floor(size * 0.6)}px sans-serif`;
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.fillStyle = '#000';
+    context.fillText('💣', x * size + size / 2, y * size + size / 2 + 1);
+  }
   context.globalAlpha = 1;
 }
 
@@ -260,7 +317,14 @@ function loop(ts) {
   const dt = ts - lastTime;
   lastTime = ts;
   dropAccum += dt;
-  if (dropAccum >= dropInterval) {
+  let interval = dropInterval;
+  if (slowRemaining > 0) {
+    const prev = Math.ceil(slowRemaining / 1000);
+    slowRemaining = Math.max(0, slowRemaining - dt);
+    interval *= SLOW_FACTOR;
+    if (Math.ceil(slowRemaining / 1000) !== prev) updateHUD();
+  }
+  if (dropAccum >= interval) {
     dropAccum = 0;
     if (!collide(current.shape, current.x, current.y + 1)) {
       current.y++;
@@ -282,6 +346,8 @@ function init() {
   gameOver = false;
   dropInterval = 1000;
   dropAccum = 0;
+  charge = 0;
+  slowRemaining = 0;
   lastTime = performance.now();
   next = randomPiece();
   spawn();
@@ -307,6 +373,9 @@ document.addEventListener('keydown', e => {
     case 'ArrowUp':
     case 'KeyX':
       tryRotate();
+      break;
+    case 'KeyS':
+      activateSlow();
       break;
     case 'Space':
       e.preventDefault();

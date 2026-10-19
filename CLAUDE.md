@@ -36,6 +36,8 @@ Key mechanics in `game.js`:
 - **Line clearing** (`clearLines`): scans bottom-up, splices full rows out and unshifts empty rows at the top.
 - **Scoring**: `LINE_SCORES = [0, 100, 300, 500, 800]` × current level; hard drop adds 2 pts/cell dropped, soft drop adds 1 pt/row.
 - **Leveling/speed**: level = `floor(lines / 10) + 1`; `dropInterval = max(100, 1000 - (level - 1) * 90)` ms.
+- **Bomb piece** (type `BOMB = 8`, 1×1): spawns with probability `BOMB_CHANCE` (10%) in `randomPiece`. On lock, `lockPiece` calls `explode` instead of `merge`: clears the 3×3 area (`BOMB_RADIUS = 1`) centered on the bomb, scoring `BOMB_POINTS` (10) × blocks destroyed × level. Drawn with a 💣 emoji in `drawBlock`.
+- **Slow-time ability**: `charge` (0–100) grows `CHARGE_PER_LINE` (25) per cleared line in `clearLines` (not while active). At 100, key `S` calls `activateSlow`: `slowRemaining = SLOW_DURATION` (10 s of game time, so pause doesn't consume it) and `loop` multiplies the drop interval by `SLOW_FACTOR` (3). HUD bar `#ability-fill` shows charge, then remaining time.
 - **Ghost piece** (`ghostY`): projects the current piece straight down to its landing row, drawn at `globalAlpha = 0.2`.
 
 Flow: `init()` → `createBoard()`, pick `next`, `spawn()` (promotes `next` to `current`, generates a new `next`), start `loop` via rAF. `spawn()` calling `collide` immediately (piece spawns into existing blocks) triggers `endGame()`.
